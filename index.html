@@ -12,6 +12,7 @@
             --terminal-dim: #008F11;
             --alert-color: #ff3333;
             --warning-color: #ffcc00;
+            --info-color: #00ccff; /* Color para etiquetas de palabras */
             --panel-bg: #1a1a1a;
             --input-bg: #222;
         }
@@ -25,8 +26,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh; /* Permite crecer si es necesario */
-            overflow-y: auto;  /* ACTIVA EL SCROLL VERTICAL SI NO CABE */
+            min-height: 100vh;
+            overflow-y: auto;
         }
 
         header {
@@ -42,18 +43,15 @@
         h1 { font-size: 1.2rem; margin: 0; text-transform: uppercase; letter-spacing: 2px; }
         .subtitle { font-size: 0.7rem; color: var(--terminal-dim); }
 
-        /* Contenedor Principal */
         #workspace {
             display: flex;
             flex-direction: column;
             width: 100%;
             max-width: 900px;
-            /* Eliminamos height: 100% fijo para evitar cortes */
             gap: 15px;
-            margin-bottom: 20px; /* Espacio al final para scroll cómodo */
+            margin-bottom: 20px;
         }
 
-        /* Panel Superior */
         #top-section {
             display: flex;
             flex-direction: column;
@@ -76,7 +74,6 @@
         .stat-value { font-size: 1.2rem; font-weight: bold; }
         .stat-label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
 
-        /* Configuración de Objetivo */
         #target-config {
             background: var(--input-bg);
             border: 1px solid #444;
@@ -100,7 +97,6 @@
         }
         #target-input:focus { outline: none; border-color: var(--terminal-green); }
 
-        /* Panel Central: Log Rápido */
         #scan-panel {
             background-color: var(--panel-bg);
             border: 1px solid var(--terminal-dim);
@@ -108,18 +104,17 @@
             overflow-y: auto;
             font-size: 0.8rem;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-            height: 250px; /* Altura fija cómoda pero scrolleable internamente */
+            height: 250px;
             min-height: 150px;
         }
 
-        /* Panel Inferior: TESOROS */
         #treasure-panel {
             background-color: #2a0a0a;
             border: 2px solid var(--alert-color);
             padding: 10px;
             display: flex;
             flex-direction: column;
-            height: 180px; /* Un poco más alto para ver mejor */
+            height: 180px;
             position: relative;
         }
 
@@ -150,12 +145,31 @@
             border-bottom: 1px solid #333;
             display: flex;
             justify-content: space-between;
-            opacity: 0.7;
+            align-items: center; /* Alineación vertical */
+            opacity: 0.8;
+            padding: 2px 0;
         }
         .log-entry.found-alert { opacity: 1; font-weight: bold; background: #300; }
 
-        .mnemonic { color: #aaa; }
-        .address { color: #555; font-size: 0.75rem; }
+        /* Estilos para las etiquetas de tipo de semilla */
+        .tag-type {
+            font-size: 0.6rem;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-right: 8px;
+            min-width: 35px;
+            text-align: center;
+            display: inline-block;
+        }
+        .tag-12 { background-color: #222; border: 1px solid #555; color: #ccc; }
+        .tag-24 { background-color: #003366; border: 1px solid var(--info-color); color: var(--info-color); }
+
+        .mnemonic-container { flex-grow: 1; display: flex; align-items: center; overflow: hidden; }
+        .mnemonic { color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
+        
+        .address { color: #555; font-size: 0.75rem; width: 140px; text-align: right; flex-shrink: 0; font-family: monospace; }
+        .status { width: 80px; text-align: right; flex-shrink: 0; }
+        
         .checking { color: var(--warning-color); font-style: italic; }
 
         button {
@@ -183,7 +197,6 @@
         .checkbox-wrapper { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
         input[type="checkbox"] { accent-color: var(--terminal-green); }
         
-        /* Mensaje de Error */
         .validation-error {
             color: var(--warning-color);
             font-size: 0.8rem;
@@ -193,7 +206,6 @@
             padding: 5px;
         }
 
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
@@ -204,12 +216,12 @@
 
     <header>
         <h1>Buscador de Entropía BIP39</h1>
-        <div class="subtitle">Herramienta de Investigación Criptográfica</div>
+        <div class="subtitle">Herramienta de Investigación Criptográfica | 12 & 24 Words</div>
     </header>
 
     <div id="workspace">
         
-        <!-- SECCIÓN SUPERIOR: Configuración y Stats -->
+        <!-- SECCIÓN SUPERIOR -->
         <div id="top-section">
             <div id="stats-panel">
                 <div class="stat-box">
@@ -226,14 +238,12 @@
                 </div>
             </div>
 
-            <!-- Configuración de Target -->
             <div id="target-config">
                 <label>🎯 OBJETIVO OFFLINE (Pega una dirección ETH 0x...):</label>
-                <input type="text" id="target-input" placeholder="0x..." value="0x00000000219ab540356cBB839Cbe05303d7705Fa">
+                <input type="text" id="target-input" placeholder="0x..." value="0xdadb0d80178819f2319190d340ce9a924f783711">
                 <div id="btc-warning" class="validation-error">
                     ⚠️ ALERTA: Has pegado una dirección de Bitcoin. <br>
-                    Este buscador usa `ethers.js` y solo puede verificar matemáticamente direcciones Ethereum (`0x...`) en modo Offline. <br>
-                    Para buscar BTC, usa el "Modo Online" (buscará saldo general) o busca la dirección ETH asociada.
+                    Este buscador usa `ethers.js` y solo puede verificar matemáticamente direcciones Ethereum (`0x...`) en modo Offline.
                 </div>
             </div>
 
@@ -242,7 +252,7 @@
                     <input type="checkbox" id="chk-online" onchange="toggleMode()">
                     <div>
                         <strong>Modo Online (Lento)</strong><br>
-                        <span style="color:#888;">Ignora el objetivo y busca cualquier saldo real (ETH/BTC).</span>
+                        <span style="color:#888;">Busca saldo real en internet.</span>
                     </div>
                 </div>
                 <div>
@@ -265,7 +275,7 @@
                 <span>CAJA DE RESULTADOS</span>
                 <button onclick="copyTreasures()" style="border-color:var(--alert-color); color:var(--alert-color)">📋 Copiar Todo</button>
             </div>
-            <textarea id="found-keys" readonly placeholder="Si alguna semilla coincide con tu OBJETIVO, aparecerá aquí..."></textarea>
+            <textarea id="found-keys" readonly placeholder="Si alguna semilla (12 o 24 palabras) coincide con tu OBJETIVO, aparecerá aquí..."></textarea>
         </div>
 
     </div>
@@ -273,7 +283,6 @@
     <script type="module">
         import { ethers } from "https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js";
 
-        // CONFIGURACIÓN
         const RPC_URL = "https://eth.llamarpc.com"; 
         
         let provider = null;
@@ -283,7 +292,6 @@
         let foundCount = 0;
         let currentTarget = "";
         
-        // Elementos UI
         const display = document.getElementById('scan-panel');
         const countDisplay = document.getElementById('count-gen');
         const speedDisplay = document.getElementById('speed-gen');
@@ -295,12 +303,10 @@
         const targetInput = document.getElementById('target-input');
         const btcWarning = document.getElementById('btc-warning');
 
-        // Escuchar cambios en el input para validar en tiempo real
         targetInput.addEventListener('input', validateInput);
 
         function validateInput() {
             const val = targetInput.value.trim();
-            // Detectar si parece una dirección BTC (empieza con 1, 3 o bc1) y NO es ETH (no empieza con 0x)
             if (!chkOnline.checked && val.length > 0 && !val.startsWith('0x')) {
                 btcWarning.style.display = 'block';
                 btnStart.disabled = true;
@@ -319,7 +325,7 @@
             
             if (chkOnline.checked) {
                 targetInput.style.opacity = "0.5";
-                btcWarning.style.display = 'none'; // Ocultar warning en online porque ahí no importa el target
+                btcWarning.style.display = 'none'; 
                 btnStart.disabled = false;
                 btnStart.style.opacity = "1";
                 
@@ -334,7 +340,7 @@
             } else {
                 targetInput.style.opacity = "1";
                 targetInput.disabled = false;
-                validateInput(); // Re-validar al volver a offline
+                validateInput(); 
             }
         }
 
@@ -349,14 +355,13 @@
             
             currentTarget = targetInput.value.trim();
             
-            // Validación final antes de iniciar
             if (!chkOnline.checked) {
                 if (currentTarget === "") {
                     alert("Por favor, ingresa una Dirección Objetivo.");
                     return;
                 }
                 if (!currentTarget.startsWith('0x')) {
-                    alert("ERROR DE PROTOCOLO: En modo Offline solo se pueden buscar direcciones Ethereum (0x...). La dirección pegada es de Bitcoin.");
+                    alert("ERROR: En modo Offline solo direcciones ETH (0x...).");
                     return;
                 }
             }
@@ -390,45 +395,52 @@
         async function miningLoop() {
             if (!isRunning) return;
 
-            const loops = chkOnline.checked ? 1 : 10; 
+            const loops = chkOnline.checked ? 1 : 5; 
 
             for (let i = 0; i < loops; i++) {
                 if (!isRunning) break;
 
                 try {
-                    // 1. Generar Mnemónica
-                    const wallet = ethers.Wallet.createRandom();
-                    const mnemonic = wallet.mnemonic.phrase;
+                    // --- NUEVA LÓGICA DE GENERACIÓN ---
+                    // 50% probabilidad de 12 palabras (16 bytes)
+                    // 50% probabilidad de 24 palabras (32 bytes)
+                    const entropyBytes = Math.random() > 0.5 ? 16 : 32; 
+                    const is24Words = entropyBytes === 32;
+
+                    // Generar mnemónica desde entropía aleatoria
+                    const mnemonicObj = ethers.Mnemonic.fromEntropy(ethers.randomBytes(entropyBytes));
+                    const mnemonicPhrase = mnemonicObj.phrase;
                     
-                    // IMPORTANTE: Esto siempre genera una dirección 0x...
+                    // Derivar billetera desde la frase
+                    const wallet = ethers.Wallet.fromPhrase(mnemonicPhrase);
                     const address = wallet.address; 
                     
                     let isMatch = false;
                     let balanceText = "0.00";
 
                     if (chkOnline.checked) {
-                        // MODO ONLINE: Busca saldo real (ETH)
-                        const tempDiv = logWallet(mnemonic, address, false, true);
+                        // MODO ONLINE
+                        const tempDiv = logWallet(mnemonicPhrase, address, false, true, is24Words);
                         try {
                             const balance = await provider.getBalance(address);
                             if (balance > 0n) {
                                 isMatch = true;
                                 balanceText = ethers.formatEther(balance) + " ETH";
                             }
-                            updateLogEntry(tempDiv, isMatch, balanceText, mnemonic);
+                            updateLogEntry(tempDiv, isMatch, balanceText, mnemonicPhrase);
                         } catch (e) {
-                            updateLogEntry(tempDiv, false, "ERR", mnemonic);
+                            updateLogEntry(tempDiv, false, "ERR", mnemonicPhrase);
                         }
                         i = loops; 
                         await new Promise(r => setTimeout(r, 2000)); 
 
                     } else {
-                        // MODO OFFLINE: Compara Strings (Solo 0x con 0x)
+                        // MODO OFFLINE
                         if (address.toLowerCase() === currentTarget.toLowerCase()) {
                             isMatch = true;
                             balanceText = "TARGET HIT";
                         }
-                        logWallet(mnemonic, address, isMatch, false);
+                        logWallet(mnemonicPhrase, address, isMatch, false, is24Words);
                     }
 
                     generatedCount++;
@@ -436,7 +448,7 @@
                     if (isMatch) {
                         foundCount++;
                         foundDisplay.innerText = foundCount;
-                        saveToTreasureBox(mnemonic, address, wallet.privateKey, balanceText);
+                        saveToTreasureBox(mnemonicPhrase, address, wallet.privateKey, balanceText);
                         alert("¡OBJETIVO LOCALIZADO! Revisa la caja inferior.");
                         stopMining(); 
                         return;
@@ -453,18 +465,29 @@
             }
         }
 
-        function logWallet(mnemonic, address, winner, isPending) {
+        // Función Log actualizada para mostrar tag de palabras
+        function logWallet(mnemonic, address, winner, isPending, is24Words) {
             const div = document.createElement('div');
             div.className = winner ? 'log-entry found-alert' : 'log-entry';
             
             const shortAddr = address.substring(0,6) + "..." + address.substring(38);
-            const shortMnemonic = mnemonic.split(" ").slice(0,3).join(" ") + "...";
+            
+            // Mostrar solo inicio...fin de la frase para ahorrar espacio visual
+            const words = mnemonic.split(" ");
+            const shortMnemonic = `${words[0]} ${words[1]} ... ${words[words.length-1]}`;
             
             let status = winner ? '!!! MATCH !!!' : '---';
             if (isPending) status = '<span class="checking">Scan...</span>';
 
+            // Etiqueta visual
+            const tagClass = is24Words ? 'tag-24' : 'tag-12';
+            const tagName = is24Words ? '24W' : '12W';
+
             div.innerHTML = `
-                <span class="mnemonic">${shortMnemonic}</span>
+                <div class="mnemonic-container">
+                    <span class="tag-type ${tagClass}">${tagName}</span>
+                    <span class="mnemonic">${shortMnemonic}</span>
+                </div>
                 <span class="address">${shortAddr}</span>
                 <span class="status">${status}</span>
             `;
@@ -478,6 +501,7 @@
             const statusSpan = div.querySelector('.status');
             if (winner) {
                 div.className = 'log-entry found-alert';
+                // Al ganar, mostramos la mnemónica completa en el log visual si cabe, o al menos actualizamos
                 div.querySelector('.mnemonic').innerText = fullMnemonic; 
                 statusSpan.innerHTML = `<strong>${text}</strong>`;
                 statusSpan.style.color = 'white';
@@ -487,8 +511,9 @@
         }
 
         function saveToTreasureBox(mnemonic, address, privKey, balance) {
+            const wordCount = mnemonic.split(" ").length;
             const entry = `
-[${new Date().toLocaleTimeString()}] !!! RESULTADO !!!
+[${new Date().toLocaleTimeString()}] !!! RESULTADO (${wordCount} PALABRAS) !!!
 --------------------------------------------------
 ADDRESS:  ${address}
 SEMILLA:  ${mnemonic}
