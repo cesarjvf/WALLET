@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Entropía BIP39 | Escáner Multi-Cadena</title>
+    <title>Suite Criptográfica | Scanner & Verificador</title>
     <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js"></script>
     <style>
         :root {
@@ -13,8 +13,8 @@
             --alert-color: #ff3333;
             --warning-color: #ffcc00;
             --info-color: #00ccff; 
-            --bsc-color: #f3ba2f; /* Color Binance */
-            --matic-color: #8247e5; /* Color Polygon */
+            --bsc-color: #f3ba2f; 
+            --matic-color: #8247e5; 
             --panel-bg: #1a1a1a;
             --input-bg: #222;
         }
@@ -76,16 +76,36 @@
         .stat-value { font-size: 1.2rem; font-weight: bold; }
         .stat-label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
 
-        #target-config {
+        /* Panel de Configuración Flexible */
+        #config-panel {
             background: var(--input-bg);
             border: 1px solid #444;
             padding: 10px;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 10px;
         }
-        
-        #target-config label { font-size: 0.8rem; color: var(--terminal-dim); font-weight: bold; }
+
+        .mode-selector {
+            display: flex;
+            gap: 15px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        .radio-label:hover { color: white; }
+        input[type="radio"] { accent-color: var(--terminal-green); }
+
+        #input-area label { font-size: 0.8rem; color: var(--terminal-dim); font-weight: bold; display: block; margin-bottom: 5px;}
         
         #target-input {
             background: #000;
@@ -141,7 +161,6 @@
             font-size: 0.8rem;
         }
 
-        /* Elementos UI */
         .log-entry {
             margin-bottom: 3px;
             border-bottom: 1px solid #333;
@@ -153,27 +172,17 @@
         }
         .log-entry.found-alert { opacity: 1; font-weight: bold; background: #300; }
 
-        .tag-type {
-            font-size: 0.6rem;
-            padding: 1px 4px;
-            border-radius: 3px;
-            margin-right: 8px;
-            min-width: 35px;
-            text-align: center;
-            display: inline-block;
-        }
+        .tag-type { font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; margin-right: 8px; min-width: 35px; text-align: center; display: inline-block; }
         .tag-12 { background-color: #222; border: 1px solid #555; color: #ccc; }
         .tag-24 { background-color: #003366; border: 1px solid var(--info-color); color: var(--info-color); }
+        .tag-key { background-color: #440044; border: 1px solid #ff00ff; color: #ff00ff; }
 
         .mnemonic-container { flex-grow: 1; display: flex; align-items: center; overflow: hidden; }
         .mnemonic { color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
-        
         .address { color: #555; font-size: 0.75rem; width: 140px; text-align: right; flex-shrink: 0; font-family: monospace; }
         .status { width: 100px; text-align: right; flex-shrink: 0; font-size: 0.75rem; }
-        
         .checking { color: var(--warning-color); font-style: italic; }
         
-        /* Colores de cadenas */
         .chain-eth { color: #fff; }
         .chain-bsc { color: var(--bsc-color); }
         .chain-poly { color: var(--matic-color); }
@@ -182,27 +191,15 @@
             background: transparent;
             border: 1px solid var(--terminal-green);
             color: var(--terminal-green);
-            padding: 5px 15px;
+            padding: 8px 20px;
             cursor: pointer;
             text-transform: uppercase;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
+            margin-top: 5px;
         }
         button:hover { background: var(--terminal-green); color: black; }
         button:disabled { border-color: #444; color: #444; cursor: not-allowed; }
 
-        #controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #222;
-            padding: 10px;
-            border: 1px solid #444;
-            margin-top: 5px;
-        }
-
-        .checkbox-wrapper { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
-        input[type="checkbox"] { accent-color: var(--terminal-green); }
-        
         .validation-error {
             color: var(--warning-color);
             font-size: 0.8rem;
@@ -221,8 +218,8 @@
 <body>
 
     <header>
-        <h1>Buscador BIP39 | Multi-Chain</h1>
-        <div class="subtitle">ETH • BSC • POLYGON | 12 & 24 Words</div>
+        <h1>Suite Criptográfica Multi-Chain</h1>
+        <div class="subtitle">Buscador Aleatorio • Verificador de Claves • Scanner EVM</div>
     </header>
 
     <div id="workspace">
@@ -231,11 +228,11 @@
             <div id="stats-panel">
                 <div class="stat-box">
                     <div class="stat-value" id="count-gen">0</div>
-                    <div class="stat-label">Generadas</div>
+                    <div class="stat-label">Intentos</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-value" id="speed-gen">0</div>
-                    <div class="stat-label">Wallets/seg</div>
+                    <div class="stat-label">Velocidad</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-value" id="found-count" style="color: var(--alert-color)">0</div>
@@ -243,32 +240,35 @@
                 </div>
             </div>
 
-            <div id="target-config">
-                <label>🎯 OBJETIVO OFFLINE (Pega una dirección ETH/BSC/MATIC 0x...):</label>
-                <input type="text" id="target-input" placeholder="0x..." value="0xdadb0d80178819f2319190d340ce9a924f783711">
-                <div id="btc-warning" class="validation-error">
-                    ⚠️ ALERTA: Has pegado una dirección de Bitcoin. Solo compatible con redes EVM (0x...).
+            <div id="config-panel">
+                <div class="mode-selector">
+                    <label class="radio-label">
+                        <input type="radio" name="mode" value="online" checked onchange="updateUI()">
+                        📡 Buscador Automático (Online)
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="mode" value="offline" onchange="updateUI()">
+                        🎯 Buscador Objetivo (Offline)
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="mode" value="manual" onchange="updateUI()">
+                        🔑 Verificador Manual (Check)
+                    </label>
                 </div>
-            </div>
 
-            <div id="controls">
-                <div class="checkbox-wrapper">
-                    <input type="checkbox" id="chk-online" onchange="toggleMode()">
-                    <div>
-                        <strong>Modo Online Multi-Cadena</strong><br>
-                        <span style="color:#888;">Busca en ETH, BSC y Polygon a la vez.</span>
-                    </div>
-                </div>
-                <div>
-                    <button id="btn-start" onclick="startMining()">▶ INICIAR</button>
-                    <button id="btn-stop" onclick="stopMining()" disabled>⏹ DETENER</button>
+                <div id="input-area">
+                    <label id="input-label">CONFIGURACIÓN:</label>
+                    <input type="text" id="target-input" placeholder="Esperando configuración..." disabled>
+                    <div id="btc-warning" class="validation-error"></div>
+                    <button id="btn-action" onclick="executeAction()">▶ INICIAR ESCANEO</button>
+                    <button id="btn-stop" onclick="stopMining()" disabled style="display:none;">⏹ DETENER</button>
                 </div>
             </div>
         </div>
 
         <div id="scan-panel">
             <div style="color: gray; text-align: center; margin-top: 50px;">
-                Listo para escanear redes EVM...
+                Selecciona un modo y presiona INICIAR...
             </div>
         </div>
 
@@ -277,7 +277,7 @@
                 <span>CAJA DE RESULTADOS</span>
                 <button onclick="copyTreasures()" style="border-color:var(--alert-color); color:var(--alert-color)">📋 Copiar Todo</button>
             </div>
-            <textarea id="found-keys" readonly placeholder="Resultados de cualquiera de las 3 redes aparecerán aquí..."></textarea>
+            <textarea id="found-keys" readonly placeholder="Los resultados positivos aparecerán aquí..."></textarea>
         </div>
 
     </div>
@@ -285,23 +285,11 @@
     <script type="module">
         import { ethers } from "https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js";
 
-        // CONFIGURACIÓN MULTI-CADENA (RPCS Públicos)
+        // CONFIGURACIÓN MULTI-CADENA
         const CHAINS = {
-            ETH: { 
-                url: "https://eth.llamarpc.com", 
-                symbol: "ETH",
-                class: "chain-eth"
-            },
-            BSC: { 
-                url: "https://binance.llamarpc.com", 
-                symbol: "BNB",
-                class: "chain-bsc"
-            },
-            POLY: { 
-                url: "https://polygon.llamarpc.com", 
-                symbol: "MATIC",
-                class: "chain-poly"
-            }
+            ETH: { url: "https://eth.llamarpc.com", symbol: "ETH" },
+            BSC: { url: "https://binance.llamarpc.com", symbol: "BNB" },
+            POLY: { url: "https://polygon.llamarpc.com", symbol: "MATIC" }
         };
 
         let providers = {};
@@ -311,171 +299,216 @@
         let foundCount = 0;
         let currentTarget = "";
         
+        // UI Elements
         const display = document.getElementById('scan-panel');
         const countDisplay = document.getElementById('count-gen');
         const speedDisplay = document.getElementById('speed-gen');
         const foundDisplay = document.getElementById('found-count');
-        const btnStart = document.getElementById('btn-start');
+        const btnAction = document.getElementById('btn-action');
         const btnStop = document.getElementById('btn-stop');
-        const chkOnline = document.getElementById('chk-online');
-        const treasureBox = document.getElementById('found-keys');
         const targetInput = document.getElementById('target-input');
-        const btcWarning = document.getElementById('btc-warning');
+        const inputLabel = document.getElementById('input-label');
+        const warningBox = document.getElementById('btc-warning');
+        const treasureBox = document.getElementById('found-keys');
 
-        targetInput.addEventListener('input', validateInput);
+        // Inicializar UI
+        window.updateUI = function() {
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            warningBox.style.display = 'none';
+            btnStop.style.display = 'none';
+            btnAction.style.display = 'inline-block';
+            btnAction.disabled = false;
 
-        function validateInput() {
-            const val = targetInput.value.trim();
-            if (!chkOnline.checked && val.length > 0 && !val.startsWith('0x')) {
-                btcWarning.style.display = 'block';
-                btnStart.disabled = true;
-                btnStart.style.opacity = "0.5";
-            } else {
-                btcWarning.style.display = 'none';
-                if (!isRunning) {
-                    btnStart.disabled = false;
-                    btnStart.style.opacity = "1";
-                }
-            }
-        }
-
-        window.toggleMode = function() {
-            targetInput.disabled = chkOnline.checked;
-            if (chkOnline.checked) {
-                targetInput.style.opacity = "0.5";
-                btcWarning.style.display = 'none'; 
-                btnStart.disabled = false;
-                btnStart.style.opacity = "1";
-                // Pre-cargar providers si no existen
-                initProviders();
-            } else {
-                targetInput.style.opacity = "1";
+            if (mode === 'online') {
+                inputLabel.innerText = "MODO AUTOMÁTICO (Genera claves al azar y busca saldo):";
+                targetInput.placeholder = "No se requiere entrada. Generación automática.";
+                targetInput.disabled = true;
+                targetInput.value = "";
+                btnAction.innerText = "▶ INICIAR MINERÍA";
+                btnStop.style.display = 'inline-block';
+            } 
+            else if (mode === 'offline') {
+                inputLabel.innerText = "DIRECCIÓN OBJETIVO (Pega la Address pública a buscar):";
+                targetInput.placeholder = "0x...";
                 targetInput.disabled = false;
-                validateInput(); 
+                targetInput.value = "0xdadb0d80178819f2319190d340ce9a924f783711"; // Ejemplo
+                btnAction.innerText = "▶ INICIAR BÚSQUEDA";
+                btnStop.style.display = 'inline-block';
+            } 
+            else if (mode === 'manual') {
+                inputLabel.innerText = "VERIFICADOR (Pega Clave Privada Hex o Semilla):";
+                targetInput.placeholder = "0x... (PrivKey) o palabra1 palabra2... (Semilla)";
+                targetInput.disabled = false;
+                targetInput.value = "";
+                btnAction.innerText = "🔎 VERIFICAR AHORA";
+                // En modo manual no hay botón detener, es una acción única
             }
-        }
+        };
 
-        function initProviders() {
-            if (Object.keys(providers).length === 0) {
+        // Ejecutar acción según modo
+        window.executeAction = async function() {
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            
+            // Inicializar providers si es necesario (Online o Manual)
+            if (mode !== 'offline' && Object.keys(providers).length === 0) {
                 try {
+                    btnAction.innerText = "Conectando...";
                     providers.ETH = new ethers.JsonRpcProvider(CHAINS.ETH.url);
                     providers.BSC = new ethers.JsonRpcProvider(CHAINS.BSC.url);
                     providers.POLY = new ethers.JsonRpcProvider(CHAINS.POLY.url);
-                    console.log("Providers Multi-Cadena Iniciados");
                 } catch(e) {
-                    console.error("Error iniciando providers", e);
+                    alert("Error conectando a RPCs");
+                    return;
                 }
             }
-        }
 
-        window.copyTreasures = function() {
-            treasureBox.select();
-            document.execCommand('copy');
-            alert("Copiado al portapapeles");
-        }
-
-        window.startMining = function() {
-            if (isRunning) return;
-            
-            currentTarget = targetInput.value.trim();
-            
-            if (!chkOnline.checked) {
-                if (currentTarget === "") {
-                    alert("Por favor, ingresa una Dirección Objetivo.");
-                    return;
-                }
-                if (!currentTarget.startsWith('0x')) {
-                    alert("ERROR: En modo Offline solo direcciones EVM (0x...).");
-                    return;
-                }
+            if (mode === 'manual') {
+                await checkManualKey();
             } else {
-                initProviders();
+                startMining(mode);
+            }
+        };
+
+        // Lógica Verificador Manual
+        async function checkManualKey() {
+            const input = targetInput.value.trim();
+            if (!input) return alert("Ingresa una clave o semilla.");
+            
+            display.innerHTML = '';
+            btnAction.disabled = true;
+            
+            let wallet;
+            let typeTag = "";
+
+            try {
+                // Intentar detectar si es Mnemónica o Private Key
+                if (input.includes(" ")) {
+                    wallet = ethers.Wallet.fromPhrase(input);
+                    typeTag = input.split(" ").length + "W";
+                } else if (input.startsWith("0x") || input.length === 64 || input.length === 66) {
+                    // Asegurar prefijo 0x
+                    const pk = input.startsWith("0x") ? input : "0x" + input;
+                    wallet = new ethers.Wallet(pk);
+                    typeTag = "KEY";
+                } else {
+                    throw new Error("Formato no reconocido. Usa '0x...' para Hex o palabras para semilla.");
+                }
+
+                const div = logWallet(input.substring(0,20)+"...", wallet.address, false, true, typeTag);
+                
+                // Chequear saldos
+                const [balETH, balBSC, balPOLY] = await Promise.all([
+                    providers.ETH.getBalance(wallet.address).catch(()=>0n),
+                    providers.BSC.getBalance(wallet.address).catch(()=>0n),
+                    providers.POLY.getBalance(wallet.address).catch(()=>0n)
+                ]);
+
+                let resultText = "0.00";
+                let isRich = false;
+
+                if (balETH > 0n || balBSC > 0n || balPOLY > 0n) {
+                    isRich = true;
+                    let bals = [];
+                    if(balETH > 0n) bals.push(formatBal(balETH, "ETH"));
+                    if(balBSC > 0n) bals.push(formatBal(balBSC, "BNB"));
+                    if(balPOLY > 0n) bals.push(formatBal(balPOLY, "MATIC"));
+                    resultText = bals.join(" + ");
+                    
+                    saveToTreasureBox("MANUAL CHECK", wallet.address, wallet.privateKey, resultText);
+                    alert("¡SALDO ENCONTRADO! " + resultText);
+                } else {
+                    resultText = "VACÍA (0.00)";
+                }
+
+                updateLogEntry(div, isRich, resultText, isRich ? wallet.privateKey : input);
+
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+            
+            btnAction.disabled = false;
+            btnAction.innerText = "🔎 VERIFICAR OTRA";
+        }
+
+        // Lógica Minería (Online/Offline)
+        window.startMining = function(mode) {
+            if (isRunning) return;
+
+            if (mode === 'offline') {
+                currentTarget = targetInput.value.trim();
+                if (!currentTarget.startsWith('0x')) {
+                    warningBox.innerText = "⚠️ Error: En modo Offline solo se aceptan direcciones EVM (0x...).";
+                    warningBox.style.display = 'block';
+                    return;
+                }
             }
 
             isRunning = true;
-            btnStart.disabled = true;
+            btnAction.disabled = true;
             btnStop.disabled = false;
-            chkOnline.disabled = true;
-            targetInput.disabled = true; 
+            targetInput.disabled = true;
+            document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
             
             display.innerHTML = ''; 
             startTime = Date.now();
-            
-            miningLoop();
+            miningLoop(mode);
         };
 
         window.stopMining = function() {
             isRunning = false;
-            btnStart.disabled = false;
+            btnAction.disabled = false;
             btnStop.disabled = true;
-            chkOnline.disabled = false;
-            if(!chkOnline.checked) targetInput.disabled = false;
+            targetInput.disabled = false;
+            document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = false);
             speedDisplay.innerText = "0";
-            validateInput();
+            updateUI(); // Restaurar textos
         };
 
-        async function miningLoop() {
+        async function miningLoop(mode) {
             if (!isRunning) return;
 
-            // En modo Online, reducimos el batch size porque hacemos 3 llamadas por wallet
-            const loops = chkOnline.checked ? 1 : 5; 
+            const loops = (mode === 'online') ? 1 : 10; 
 
             for (let i = 0; i < loops; i++) {
                 if (!isRunning) break;
 
                 try {
-                    // Generación Probabilística (12 vs 24 palabras)
                     const entropyBytes = Math.random() > 0.5 ? 16 : 32; 
                     const is24Words = entropyBytes === 32;
                     const mnemonicObj = ethers.Mnemonic.fromEntropy(ethers.randomBytes(entropyBytes));
-                    const mnemonicPhrase = mnemonicObj.phrase;
-                    
-                    const wallet = ethers.Wallet.fromPhrase(mnemonicPhrase);
-                    const address = wallet.address; 
+                    const wallet = ethers.Wallet.fromPhrase(mnemonicObj.phrase);
                     
                     let isMatch = false;
                     let balanceInfo = "0.00";
 
-                    if (chkOnline.checked) {
-                        // MODO ONLINE: Multi-Chain Scan
-                        const tempDiv = logWallet(mnemonicPhrase, address, false, true, is24Words);
-                        
+                    if (mode === 'online') {
+                        const tempDiv = logWallet(mnemonicObj.phrase, wallet.address, false, true, is24Words ? "24W" : "12W");
                         try {
-                            // Consultamos las 3 redes en paralelo para ahorrar tiempo
                             const [balETH, balBSC, balPOLY] = await Promise.all([
-                                providers.ETH.getBalance(address).catch(()=>0n),
-                                providers.BSC.getBalance(address).catch(()=>0n),
-                                providers.POLY.getBalance(address).catch(()=>0n)
+                                providers.ETH.getBalance(wallet.address).catch(()=>0n),
+                                providers.BSC.getBalance(wallet.address).catch(()=>0n),
+                                providers.POLY.getBalance(wallet.address).catch(()=>0n)
                             ]);
 
-                            if (balETH > 0n) {
+                            if (balETH > 0n || balBSC > 0n || balPOLY > 0n) {
                                 isMatch = true;
-                                balanceInfo = formatBal(balETH, "ETH");
-                            } else if (balBSC > 0n) {
-                                isMatch = true;
-                                balanceInfo = formatBal(balBSC, "BNB");
-                            } else if (balPOLY > 0n) {
-                                isMatch = true;
-                                balanceInfo = formatBal(balPOLY, "MATIC");
+                                if(balETH > 0n) balanceInfo = formatBal(balETH, "ETH");
+                                else if(balBSC > 0n) balanceInfo = formatBal(balBSC, "BNB");
+                                else balanceInfo = formatBal(balPOLY, "MATIC");
                             }
-
-                            updateLogEntry(tempDiv, isMatch, balanceInfo, mnemonicPhrase);
-
-                        } catch (e) {
-                            updateLogEntry(tempDiv, false, "ERR NET", mnemonicPhrase);
-                        }
+                            updateLogEntry(tempDiv, isMatch, balanceInfo, mnemonicObj.phrase);
+                        } catch (e) { updateLogEntry(tempDiv, false, "ERR", mnemonicObj.phrase); }
                         
-                        // Delay obligatorio para no saturar los 3 RPCs
                         i = loops; 
-                        await new Promise(r => setTimeout(r, 2500)); 
+                        await new Promise(r => setTimeout(r, 2000)); 
 
                     } else {
-                        // MODO OFFLINE (Target Match)
-                        if (address.toLowerCase() === currentTarget.toLowerCase()) {
+                        // OFFLINE
+                        if (wallet.address.toLowerCase() === currentTarget.toLowerCase()) {
                             isMatch = true;
                             balanceInfo = "TARGET HIT";
                         }
-                        logWallet(mnemonicPhrase, address, isMatch, false, is24Words);
+                        logWallet(mnemonicObj.phrase, wallet.address, isMatch, false, is24Words ? "24W" : "12W");
                     }
 
                     generatedCount++;
@@ -483,47 +516,40 @@
                     if (isMatch) {
                         foundCount++;
                         foundDisplay.innerText = foundCount;
-                        saveToTreasureBox(mnemonicPhrase, address, wallet.privateKey, balanceInfo);
-                        alert("¡ENCONTRADO! Saldo detectado en " + balanceInfo);
-                        stopMining(); 
-                        return;
+                        saveToTreasureBox(mnemonicObj.phrase, wallet.address, wallet.privateKey, balanceInfo);
+                        alert("¡EXITO! Resultado guardado.");
+                        if(mode === 'online') stopMining(); 
                     }
 
                 } catch (err) { console.error(err); }
             }
 
             updateStats();
-
-            if (isRunning) {
-                const nextTick = chkOnline.checked ? 100 : 0;
-                setTimeout(miningLoop, nextTick);
-            }
+            if (isRunning) setTimeout(() => miningLoop(mode), mode === 'online' ? 100 : 0);
         }
 
         function formatBal(wei, symbol) {
-            const val = ethers.formatEther(wei);
-            // Cortar decimales largos
-            return parseFloat(val).toFixed(4) + " " + symbol;
+            return parseFloat(ethers.formatEther(wei)).toFixed(4) + " " + symbol;
         }
 
-        function logWallet(mnemonic, address, winner, isPending, is24Words) {
+        function logWallet(text, address, winner, isPending, tag) {
             const div = document.createElement('div');
             div.className = winner ? 'log-entry found-alert' : 'log-entry';
             
             const shortAddr = address.substring(0,6) + "..." + address.substring(38);
-            const words = mnemonic.split(" ");
-            const shortMnemonic = `${words[0]} ${words[1]} ... ${words[words.length-1]}`;
+            const shortText = text.length > 30 ? text.substring(0, 25) + "..." : text;
             
-            let status = winner ? '!!! MATCH !!!' : '0.00';
+            let status = winner ? '!!! SI !!!' : '0.00';
             if (isPending) status = '<span class="checking">Scan...</span>';
 
-            const tagClass = is24Words ? 'tag-24' : 'tag-12';
-            const tagName = is24Words ? '24W' : '12W';
+            let tagClass = 'tag-12';
+            if(tag === '24W') tagClass = 'tag-24';
+            if(tag === 'KEY') tagClass = 'tag-key';
 
             div.innerHTML = `
                 <div class="mnemonic-container">
-                    <span class="tag-type ${tagClass}">${tagName}</span>
-                    <span class="mnemonic">${shortMnemonic}</span>
+                    <span class="tag-type ${tagClass}">${tag}</span>
+                    <span class="mnemonic">${shortText}</span>
                 </div>
                 <span class="address">${shortAddr}</span>
                 <span class="status">${status}</span>
@@ -534,31 +560,27 @@
             return div;
         }
 
-        function updateLogEntry(div, winner, text, fullMnemonic) {
+        function updateLogEntry(div, winner, text, fullText) {
             const statusSpan = div.querySelector('.status');
             if (winner) {
                 div.className = 'log-entry found-alert';
-                div.querySelector('.mnemonic').innerText = fullMnemonic; 
+                div.querySelector('.mnemonic').innerText = fullText; 
                 statusSpan.innerHTML = `<strong>${text}</strong>`;
-                
-                // Color específico según la moneda encontrada
                 if(text.includes("ETH")) statusSpan.classList.add("chain-eth");
                 if(text.includes("BNB")) statusSpan.style.color = "var(--bsc-color)";
                 if(text.includes("MATIC")) statusSpan.style.color = "var(--matic-color)";
-
             } else {
                 statusSpan.innerText = text;
             }
         }
 
-        function saveToTreasureBox(mnemonic, address, privKey, balance) {
-            const wordCount = mnemonic.split(" ").length;
+        function saveToTreasureBox(source, address, privKey, balance) {
             const entry = `
-[${new Date().toLocaleTimeString()}] !!! RESULTADO (${wordCount} WORDS) !!!
+[${new Date().toLocaleTimeString()}] !!! HALLAZGO (${balance}) !!!
 --------------------------------------------------
-BALANCE:  ${balance}
+ORIGEN:   ${source.length > 50 ? "SEMILLA" : "MANUAL KEY"}
 ADDRESS:  ${address}
-SEMILLA:  ${mnemonic}
+DATA:     ${source}
 PRIVKEY:  ${privKey}
 --------------------------------------------------
 \n`;
@@ -574,6 +596,15 @@ PRIVKEY:  ${privKey}
                 speedDisplay.innerText = speed < 1 ? speed.toFixed(1) : Math.floor(speed);
             }
         }
+
+        window.copyTreasures = function() {
+            treasureBox.select();
+            document.execCommand('copy');
+            alert("Copiado al portapapeles");
+        }
+        
+        // Inicializar
+        updateUI();
     </script>
 </body>
 </html>
