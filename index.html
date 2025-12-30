@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suite Criptográfica | Scanner & Verificador</title>
+    <title>Suite Criptográfica | Scanner Octa-Chain</title>
     <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js"></script>
     <style>
         :root {
@@ -13,10 +13,17 @@
             --alert-color: #ff3333;
             --warning-color: #ffcc00;
             --info-color: #00ccff; 
-            --bsc-color: #f3ba2f; 
-            --matic-color: #8247e5; 
             --panel-bg: #1a1a1a;
             --input-bg: #222;
+            
+            /* Colores de Redes */
+            --bsc-color: #f3ba2f; 
+            --matic-color: #8247e5; 
+            --avax-color: #e84142;
+            --arb-color: #2d374b;
+            --op-color: #ff0420;
+            --base-color: #0052ff;
+            --ftm-color: #1969ff;
         }
 
         body {
@@ -76,7 +83,6 @@
         .stat-value { font-size: 1.2rem; font-weight: bold; }
         .stat-label { font-size: 0.6rem; color: #888; text-transform: uppercase; }
 
-        /* Panel de Configuración Flexible */
         #config-panel {
             background: var(--input-bg);
             border: 1px solid #444;
@@ -88,6 +94,7 @@
 
         .mode-selector {
             display: flex;
+            flex-wrap: wrap;
             gap: 15px;
             border-bottom: 1px solid #444;
             padding-bottom: 10px;
@@ -183,9 +190,16 @@
         .status { width: 100px; text-align: right; flex-shrink: 0; font-size: 0.75rem; }
         .checking { color: var(--warning-color); font-style: italic; }
         
+        /* Badges de Redes */
         .chain-eth { color: #fff; }
         .chain-bsc { color: var(--bsc-color); }
         .chain-poly { color: var(--matic-color); }
+        .chain-avax { color: var(--avax-color); }
+        .chain-arb { color: #9bb0cf; } /* Arbitrum Azul Claro */
+        .chain-op { color: var(--op-color); }
+        .chain-base { color: var(--base-color); }
+        .chain-ftm { color: var(--ftm-color); }
+        .chain-multi { color: #fff; text-shadow: 0 0 5px #fff; }
 
         button {
             background: transparent;
@@ -208,6 +222,16 @@
             border: 1px solid var(--warning-color);
             padding: 5px;
         }
+        
+        .network-status {
+            font-size: 0.7rem;
+            color: #555;
+            margin-top: 5px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .net-active { color: var(--terminal-green); }
 
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #000; }
@@ -218,8 +242,8 @@
 <body>
 
     <header>
-        <h1>Suite Criptográfica Multi-Chain</h1>
-        <div class="subtitle">Buscador Aleatorio • Verificador de Claves • Scanner EVM</div>
+        <h1>Suite Octa-Chain EVM</h1>
+        <div class="subtitle">8 Redes Simultáneas: ETH • BSC • POLY • AVAX • ARB • OP • BASE • FTM</div>
     </header>
 
     <div id="workspace">
@@ -260,6 +284,11 @@
                     <label id="input-label">CONFIGURACIÓN:</label>
                     <input type="text" id="target-input" placeholder="Esperando configuración..." disabled>
                     <div id="btc-warning" class="validation-error"></div>
+                    
+                    <div class="network-status" id="net-status" style="display:none;">
+                        Conectando a 8 redes...
+                    </div>
+
                     <button id="btn-action" onclick="executeAction()">▶ INICIAR ESCANEO</button>
                     <button id="btn-stop" onclick="stopMining()" disabled style="display:none;">⏹ DETENER</button>
                 </div>
@@ -285,11 +314,16 @@
     <script type="module">
         import { ethers } from "https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js";
 
-        // CONFIGURACIÓN MULTI-CADENA
+        // CONFIGURACIÓN EXPANDIDA: 8 REDES
         const CHAINS = {
-            ETH: { url: "https://eth.llamarpc.com", symbol: "ETH" },
-            BSC: { url: "https://binance.llamarpc.com", symbol: "BNB" },
-            POLY: { url: "https://polygon.llamarpc.com", symbol: "MATIC" }
+            ETH:  { url: "https://eth.llamarpc.com", symbol: "ETH" },
+            BSC:  { url: "https://binance.llamarpc.com", symbol: "BNB" },
+            POLY: { url: "https://polygon.llamarpc.com", symbol: "MATIC" },
+            AVAX: { url: "https://avalanche.llamarpc.com", symbol: "AVAX" },
+            ARB:  { url: "https://arbitrum.llamarpc.com", symbol: "ETH" },
+            OP:   { url: "https://optimism.llamarpc.com", symbol: "ETH" },
+            BASE: { url: "https://base.llamarpc.com", symbol: "ETH" },
+            FTM:  { url: "https://rpc.ftm.tools", symbol: "FTM" }
         };
 
         let providers = {};
@@ -310,56 +344,65 @@
         const inputLabel = document.getElementById('input-label');
         const warningBox = document.getElementById('btc-warning');
         const treasureBox = document.getElementById('found-keys');
+        const netStatus = document.getElementById('net-status');
 
-        // Inicializar UI
         window.updateUI = function() {
             const mode = document.querySelector('input[name="mode"]:checked').value;
             warningBox.style.display = 'none';
             btnStop.style.display = 'none';
             btnAction.style.display = 'inline-block';
             btnAction.disabled = false;
+            netStatus.style.display = 'none';
 
             if (mode === 'online') {
-                inputLabel.innerText = "MODO AUTOMÁTICO (Genera claves al azar y busca saldo):";
-                targetInput.placeholder = "No se requiere entrada. Generación automática.";
+                inputLabel.innerText = "MODO AUTOMÁTICO (8 Redes):";
+                targetInput.placeholder = "Generación automática.";
                 targetInput.disabled = true;
                 targetInput.value = "";
                 btnAction.innerText = "▶ INICIAR MINERÍA";
                 btnStop.style.display = 'inline-block';
             } 
             else if (mode === 'offline') {
-                inputLabel.innerText = "DIRECCIÓN OBJETIVO (Pega la Address pública a buscar):";
+                inputLabel.innerText = "DIRECCIÓN OBJETIVO (EVM):";
                 targetInput.placeholder = "0x...";
                 targetInput.disabled = false;
-                targetInput.value = "0xdadb0d80178819f2319190d340ce9a924f783711"; // Ejemplo
+                targetInput.value = "0xdadb0d80178819f2319190d340ce9a924f783711";
                 btnAction.innerText = "▶ INICIAR BÚSQUEDA";
                 btnStop.style.display = 'inline-block';
             } 
             else if (mode === 'manual') {
-                inputLabel.innerText = "VERIFICADOR (Pega Clave Privada Hex o Semilla):";
-                targetInput.placeholder = "0x... (PrivKey) o palabra1 palabra2... (Semilla)";
+                inputLabel.innerText = "VERIFICADOR MANUAL:";
+                targetInput.placeholder = "0x... o Semilla";
                 targetInput.disabled = false;
                 targetInput.value = "";
-                btnAction.innerText = "🔎 VERIFICAR AHORA";
-                // En modo manual no hay botón detener, es una acción única
+                btnAction.innerText = "🔎 VERIFICAR EN 8 REDES";
             }
         };
 
-        // Ejecutar acción según modo
+        async function initProviders() {
+            if (Object.keys(providers).length > 0) return;
+            
+            netStatus.style.display = 'flex';
+            netStatus.innerHTML = "<span>Iniciando conexión a 8 blockchains...</span>";
+            
+            // Inicializar en paralelo pero sin bloquear
+            const keys = Object.keys(CHAINS);
+            for (const key of keys) {
+                try {
+                    providers[key] = new ethers.JsonRpcProvider(CHAINS[key].url);
+                } catch(e) { console.error(`Error init ${key}`); }
+            }
+            netStatus.innerHTML = `<span class="net-active">✅ Conectado a: ${keys.join(", ")}</span>`;
+        }
+
         window.executeAction = async function() {
             const mode = document.querySelector('input[name="mode"]:checked').value;
             
-            // Inicializar providers si es necesario (Online o Manual)
-            if (mode !== 'offline' && Object.keys(providers).length === 0) {
-                try {
-                    btnAction.innerText = "Conectando...";
-                    providers.ETH = new ethers.JsonRpcProvider(CHAINS.ETH.url);
-                    providers.BSC = new ethers.JsonRpcProvider(CHAINS.BSC.url);
-                    providers.POLY = new ethers.JsonRpcProvider(CHAINS.POLY.url);
-                } catch(e) {
-                    alert("Error conectando a RPCs");
-                    return;
-                }
+            if (mode !== 'offline') {
+                btnAction.disabled = true;
+                btnAction.innerText = "Conectando...";
+                await initProviders();
+                btnAction.disabled = false;
             }
 
             if (mode === 'manual') {
@@ -369,51 +412,55 @@
             }
         };
 
-        // Lógica Verificador Manual
         async function checkManualKey() {
             const input = targetInput.value.trim();
             if (!input) return alert("Ingresa una clave o semilla.");
             
             display.innerHTML = '';
             btnAction.disabled = true;
+            btnAction.innerText = "ESCANEANDO...";
             
             let wallet;
             let typeTag = "";
 
             try {
-                // Intentar detectar si es Mnemónica o Private Key
                 if (input.includes(" ")) {
                     wallet = ethers.Wallet.fromPhrase(input);
                     typeTag = input.split(" ").length + "W";
                 } else if (input.startsWith("0x") || input.length === 64 || input.length === 66) {
-                    // Asegurar prefijo 0x
                     const pk = input.startsWith("0x") ? input : "0x" + input;
                     wallet = new ethers.Wallet(pk);
                     typeTag = "KEY";
                 } else {
-                    throw new Error("Formato no reconocido. Usa '0x...' para Hex o palabras para semilla.");
+                    throw new Error("Formato inválido.");
                 }
 
                 const div = logWallet(input.substring(0,20)+"...", wallet.address, false, true, typeTag);
                 
-                // Chequear saldos
-                const [balETH, balBSC, balPOLY] = await Promise.all([
-                    providers.ETH.getBalance(wallet.address).catch(()=>0n),
-                    providers.BSC.getBalance(wallet.address).catch(()=>0n),
-                    providers.POLY.getBalance(wallet.address).catch(()=>0n)
-                ]);
+                // Escaneo masivo en paralelo (Promise.allSettled es mejor para que no falle todo si uno falla)
+                const promises = Object.keys(providers).map(async (key) => {
+                    try {
+                        const bal = await providers[key].getBalance(wallet.address);
+                        return { key, bal, sym: CHAINS[key].symbol };
+                    } catch(e) { return { key, bal: 0n, sym: "" }; }
+                });
+
+                const results = await Promise.all(promises);
+                let foundTexts = [];
+                let totalFound = 0;
+
+                results.forEach(res => {
+                    if (res.bal > 0n) {
+                        foundTexts.push(`${formatBal(res.bal, res.sym)} (${res.key})`);
+                        totalFound++;
+                    }
+                });
 
                 let resultText = "0.00";
-                let isRich = false;
+                let isRich = totalFound > 0;
 
-                if (balETH > 0n || balBSC > 0n || balPOLY > 0n) {
-                    isRich = true;
-                    let bals = [];
-                    if(balETH > 0n) bals.push(formatBal(balETH, "ETH"));
-                    if(balBSC > 0n) bals.push(formatBal(balBSC, "BNB"));
-                    if(balPOLY > 0n) bals.push(formatBal(balPOLY, "MATIC"));
-                    resultText = bals.join(" + ");
-                    
+                if (isRich) {
+                    resultText = foundTexts.join(" + ");
                     saveToTreasureBox("MANUAL CHECK", wallet.address, wallet.privateKey, resultText);
                     alert("¡SALDO ENCONTRADO! " + resultText);
                 } else {
@@ -427,17 +474,16 @@
             }
             
             btnAction.disabled = false;
-            btnAction.innerText = "🔎 VERIFICAR OTRA";
+            btnAction.innerText = "🔎 VERIFICAR EN 8 REDES";
         }
 
-        // Lógica Minería (Online/Offline)
         window.startMining = function(mode) {
             if (isRunning) return;
 
             if (mode === 'offline') {
                 currentTarget = targetInput.value.trim();
                 if (!currentTarget.startsWith('0x')) {
-                    warningBox.innerText = "⚠️ Error: En modo Offline solo se aceptan direcciones EVM (0x...).";
+                    warningBox.innerText = "⚠️ Error: Solo direcciones EVM (0x...).";
                     warningBox.style.display = 'block';
                     return;
                 }
@@ -461,12 +507,13 @@
             targetInput.disabled = false;
             document.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = false);
             speedDisplay.innerText = "0";
-            updateUI(); // Restaurar textos
+            updateUI(); 
         };
 
         async function miningLoop(mode) {
             if (!isRunning) return;
 
+            // Online es más lento por las llamadas a red (ahora son 8!)
             const loops = (mode === 'online') ? 1 : 10; 
 
             for (let i = 0; i < loops; i++) {
@@ -483,24 +530,31 @@
 
                     if (mode === 'online') {
                         const tempDiv = logWallet(mnemonicObj.phrase, wallet.address, false, true, is24Words ? "24W" : "12W");
+                        
                         try {
-                            const [balETH, balBSC, balPOLY] = await Promise.all([
-                                providers.ETH.getBalance(wallet.address).catch(()=>0n),
-                                providers.BSC.getBalance(wallet.address).catch(()=>0n),
-                                providers.POLY.getBalance(wallet.address).catch(()=>0n)
-                            ]);
+                            // Consultar 8 redes
+                            const promises = Object.keys(providers).map(async (key) => {
+                                try {
+                                    const bal = await providers[key].getBalance(wallet.address);
+                                    if(bal > 0n) return { found: true, text: formatBal(bal, CHAINS[key].symbol), chain: key };
+                                } catch(e) {}
+                                return null;
+                            });
 
-                            if (balETH > 0n || balBSC > 0n || balPOLY > 0n) {
+                            const results = await Promise.all(promises);
+                            const hit = results.find(r => r && r.found);
+
+                            if (hit) {
                                 isMatch = true;
-                                if(balETH > 0n) balanceInfo = formatBal(balETH, "ETH");
-                                else if(balBSC > 0n) balanceInfo = formatBal(balBSC, "BNB");
-                                else balanceInfo = formatBal(balPOLY, "MATIC");
+                                balanceInfo = `${hit.text} (${hit.chain})`;
                             }
+                            
                             updateLogEntry(tempDiv, isMatch, balanceInfo, mnemonicObj.phrase);
                         } catch (e) { updateLogEntry(tempDiv, false, "ERR", mnemonicObj.phrase); }
                         
                         i = loops; 
-                        await new Promise(r => setTimeout(r, 2000)); 
+                        // Delay un poco mayor para proteger de rate limits al ser 8 llamadas
+                        await new Promise(r => setTimeout(r, 2500)); 
 
                     } else {
                         // OFFLINE
@@ -517,7 +571,7 @@
                         foundCount++;
                         foundDisplay.innerText = foundCount;
                         saveToTreasureBox(mnemonicObj.phrase, wallet.address, wallet.privateKey, balanceInfo);
-                        alert("¡EXITO! Resultado guardado.");
+                        alert("¡EXITO! Saldo en: " + balanceInfo);
                         if(mode === 'online') stopMining(); 
                     }
 
@@ -566,9 +620,15 @@
                 div.className = 'log-entry found-alert';
                 div.querySelector('.mnemonic').innerText = fullText; 
                 statusSpan.innerHTML = `<strong>${text}</strong>`;
+                
+                // Colorear según cadena
                 if(text.includes("ETH")) statusSpan.classList.add("chain-eth");
-                if(text.includes("BNB")) statusSpan.style.color = "var(--bsc-color)";
-                if(text.includes("MATIC")) statusSpan.style.color = "var(--matic-color)";
+                else if(text.includes("BNB")) statusSpan.classList.add("chain-bsc");
+                else if(text.includes("MATIC")) statusSpan.classList.add("chain-poly");
+                else if(text.includes("AVAX")) statusSpan.classList.add("chain-avax");
+                else if(text.includes("FTM")) statusSpan.classList.add("chain-ftm");
+                else statusSpan.classList.add("chain-multi");
+
             } else {
                 statusSpan.innerText = text;
             }
@@ -576,8 +636,9 @@
 
         function saveToTreasureBox(source, address, privKey, balance) {
             const entry = `
-[${new Date().toLocaleTimeString()}] !!! HALLAZGO (${balance}) !!!
+[${new Date().toLocaleTimeString()}] !!! HALLAZGO MULTI-CADENA !!!
 --------------------------------------------------
+SALDO:    ${balance}
 ORIGEN:   ${source.length > 50 ? "SEMILLA" : "MANUAL KEY"}
 ADDRESS:  ${address}
 DATA:     ${source}
@@ -603,7 +664,6 @@ PRIVKEY:  ${privKey}
             alert("Copiado al portapapeles");
         }
         
-        // Inicializar
         updateUI();
     </script>
 </body>
