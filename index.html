@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Entropía BIP39 | Suite de Investigación</title>
+    <title>Generador de Entropía BIP39 | Escáner Multi-Cadena</title>
     <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js"></script>
     <style>
         :root {
@@ -12,7 +12,9 @@
             --terminal-dim: #008F11;
             --alert-color: #ff3333;
             --warning-color: #ffcc00;
-            --info-color: #00ccff; /* Color para etiquetas de palabras */
+            --info-color: #00ccff; 
+            --bsc-color: #f3ba2f; /* Color Binance */
+            --matic-color: #8247e5; /* Color Polygon */
             --panel-bg: #1a1a1a;
             --input-bg: #222;
         }
@@ -145,13 +147,12 @@
             border-bottom: 1px solid #333;
             display: flex;
             justify-content: space-between;
-            align-items: center; /* Alineación vertical */
+            align-items: center; 
             opacity: 0.8;
             padding: 2px 0;
         }
         .log-entry.found-alert { opacity: 1; font-weight: bold; background: #300; }
 
-        /* Estilos para las etiquetas de tipo de semilla */
         .tag-type {
             font-size: 0.6rem;
             padding: 1px 4px;
@@ -168,9 +169,14 @@
         .mnemonic { color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 10px; }
         
         .address { color: #555; font-size: 0.75rem; width: 140px; text-align: right; flex-shrink: 0; font-family: monospace; }
-        .status { width: 80px; text-align: right; flex-shrink: 0; }
+        .status { width: 100px; text-align: right; flex-shrink: 0; font-size: 0.75rem; }
         
         .checking { color: var(--warning-color); font-style: italic; }
+        
+        /* Colores de cadenas */
+        .chain-eth { color: #fff; }
+        .chain-bsc { color: var(--bsc-color); }
+        .chain-poly { color: var(--matic-color); }
 
         button {
             background: transparent;
@@ -215,13 +221,12 @@
 <body>
 
     <header>
-        <h1>Buscador de Entropía BIP39</h1>
-        <div class="subtitle">Herramienta de Investigación Criptográfica | 12 & 24 Words</div>
+        <h1>Buscador BIP39 | Multi-Chain</h1>
+        <div class="subtitle">ETH • BSC • POLYGON | 12 & 24 Words</div>
     </header>
 
     <div id="workspace">
         
-        <!-- SECCIÓN SUPERIOR -->
         <div id="top-section">
             <div id="stats-panel">
                 <div class="stat-box">
@@ -239,11 +244,10 @@
             </div>
 
             <div id="target-config">
-                <label>🎯 OBJETIVO OFFLINE (Pega una dirección ETH 0x...):</label>
+                <label>🎯 OBJETIVO OFFLINE (Pega una dirección ETH/BSC/MATIC 0x...):</label>
                 <input type="text" id="target-input" placeholder="0x..." value="0xdadb0d80178819f2319190d340ce9a924f783711">
                 <div id="btc-warning" class="validation-error">
-                    ⚠️ ALERTA: Has pegado una dirección de Bitcoin. <br>
-                    Este buscador usa `ethers.js` y solo puede verificar matemáticamente direcciones Ethereum (`0x...`) en modo Offline.
+                    ⚠️ ALERTA: Has pegado una dirección de Bitcoin. Solo compatible con redes EVM (0x...).
                 </div>
             </div>
 
@@ -251,8 +255,8 @@
                 <div class="checkbox-wrapper">
                     <input type="checkbox" id="chk-online" onchange="toggleMode()">
                     <div>
-                        <strong>Modo Online (Lento)</strong><br>
-                        <span style="color:#888;">Busca saldo real en internet.</span>
+                        <strong>Modo Online Multi-Cadena</strong><br>
+                        <span style="color:#888;">Busca en ETH, BSC y Polygon a la vez.</span>
                     </div>
                 </div>
                 <div>
@@ -262,20 +266,18 @@
             </div>
         </div>
 
-        <!-- SECCIÓN CENTRAL: Log -->
         <div id="scan-panel">
             <div style="color: gray; text-align: center; margin-top: 50px;">
-                Define tu objetivo y presiona INICIAR...
+                Listo para escanear redes EVM...
             </div>
         </div>
 
-        <!-- SECCIÓN INFERIOR: Tesoros -->
         <div id="treasure-panel">
             <div id="treasure-header">
                 <span>CAJA DE RESULTADOS</span>
                 <button onclick="copyTreasures()" style="border-color:var(--alert-color); color:var(--alert-color)">📋 Copiar Todo</button>
             </div>
-            <textarea id="found-keys" readonly placeholder="Si alguna semilla (12 o 24 palabras) coincide con tu OBJETIVO, aparecerá aquí..."></textarea>
+            <textarea id="found-keys" readonly placeholder="Resultados de cualquiera de las 3 redes aparecerán aquí..."></textarea>
         </div>
 
     </div>
@@ -283,9 +285,26 @@
     <script type="module">
         import { ethers } from "https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js";
 
-        const RPC_URL = "https://eth.llamarpc.com"; 
-        
-        let provider = null;
+        // CONFIGURACIÓN MULTI-CADENA (RPCS Públicos)
+        const CHAINS = {
+            ETH: { 
+                url: "https://eth.llamarpc.com", 
+                symbol: "ETH",
+                class: "chain-eth"
+            },
+            BSC: { 
+                url: "https://binance.llamarpc.com", 
+                symbol: "BNB",
+                class: "chain-bsc"
+            },
+            POLY: { 
+                url: "https://polygon.llamarpc.com", 
+                symbol: "MATIC",
+                class: "chain-poly"
+            }
+        };
+
+        let providers = {};
         let isRunning = false;
         let generatedCount = 0;
         let startTime = 0;
@@ -322,25 +341,30 @@
 
         window.toggleMode = function() {
             targetInput.disabled = chkOnline.checked;
-            
             if (chkOnline.checked) {
                 targetInput.style.opacity = "0.5";
                 btcWarning.style.display = 'none'; 
                 btnStart.disabled = false;
                 btnStart.style.opacity = "1";
-                
-                if (!provider) {
-                    try {
-                        provider = new ethers.JsonRpcProvider(RPC_URL);
-                    } catch(e) {
-                        alert("Error de conexión RPC.");
-                        chkOnline.checked = false;
-                    }
-                }
+                // Pre-cargar providers si no existen
+                initProviders();
             } else {
                 targetInput.style.opacity = "1";
                 targetInput.disabled = false;
                 validateInput(); 
+            }
+        }
+
+        function initProviders() {
+            if (Object.keys(providers).length === 0) {
+                try {
+                    providers.ETH = new ethers.JsonRpcProvider(CHAINS.ETH.url);
+                    providers.BSC = new ethers.JsonRpcProvider(CHAINS.BSC.url);
+                    providers.POLY = new ethers.JsonRpcProvider(CHAINS.POLY.url);
+                    console.log("Providers Multi-Cadena Iniciados");
+                } catch(e) {
+                    console.error("Error iniciando providers", e);
+                }
             }
         }
 
@@ -361,13 +385,11 @@
                     return;
                 }
                 if (!currentTarget.startsWith('0x')) {
-                    alert("ERROR: En modo Offline solo direcciones ETH (0x...).");
+                    alert("ERROR: En modo Offline solo direcciones EVM (0x...).");
                     return;
                 }
-            }
-
-            if (chkOnline.checked && !provider) {
-                provider = new ethers.JsonRpcProvider(RPC_URL);
+            } else {
+                initProviders();
             }
 
             isRunning = true;
@@ -395,50 +417,63 @@
         async function miningLoop() {
             if (!isRunning) return;
 
+            // En modo Online, reducimos el batch size porque hacemos 3 llamadas por wallet
             const loops = chkOnline.checked ? 1 : 5; 
 
             for (let i = 0; i < loops; i++) {
                 if (!isRunning) break;
 
                 try {
-                    // --- NUEVA LÓGICA DE GENERACIÓN ---
-                    // 50% probabilidad de 12 palabras (16 bytes)
-                    // 50% probabilidad de 24 palabras (32 bytes)
+                    // Generación Probabilística (12 vs 24 palabras)
                     const entropyBytes = Math.random() > 0.5 ? 16 : 32; 
                     const is24Words = entropyBytes === 32;
-
-                    // Generar mnemónica desde entropía aleatoria
                     const mnemonicObj = ethers.Mnemonic.fromEntropy(ethers.randomBytes(entropyBytes));
                     const mnemonicPhrase = mnemonicObj.phrase;
                     
-                    // Derivar billetera desde la frase
                     const wallet = ethers.Wallet.fromPhrase(mnemonicPhrase);
                     const address = wallet.address; 
                     
                     let isMatch = false;
-                    let balanceText = "0.00";
+                    let balanceInfo = "0.00";
 
                     if (chkOnline.checked) {
-                        // MODO ONLINE
+                        // MODO ONLINE: Multi-Chain Scan
                         const tempDiv = logWallet(mnemonicPhrase, address, false, true, is24Words);
+                        
                         try {
-                            const balance = await provider.getBalance(address);
-                            if (balance > 0n) {
+                            // Consultamos las 3 redes en paralelo para ahorrar tiempo
+                            const [balETH, balBSC, balPOLY] = await Promise.all([
+                                providers.ETH.getBalance(address).catch(()=>0n),
+                                providers.BSC.getBalance(address).catch(()=>0n),
+                                providers.POLY.getBalance(address).catch(()=>0n)
+                            ]);
+
+                            if (balETH > 0n) {
                                 isMatch = true;
-                                balanceText = ethers.formatEther(balance) + " ETH";
+                                balanceInfo = formatBal(balETH, "ETH");
+                            } else if (balBSC > 0n) {
+                                isMatch = true;
+                                balanceInfo = formatBal(balBSC, "BNB");
+                            } else if (balPOLY > 0n) {
+                                isMatch = true;
+                                balanceInfo = formatBal(balPOLY, "MATIC");
                             }
-                            updateLogEntry(tempDiv, isMatch, balanceText, mnemonicPhrase);
+
+                            updateLogEntry(tempDiv, isMatch, balanceInfo, mnemonicPhrase);
+
                         } catch (e) {
-                            updateLogEntry(tempDiv, false, "ERR", mnemonicPhrase);
+                            updateLogEntry(tempDiv, false, "ERR NET", mnemonicPhrase);
                         }
+                        
+                        // Delay obligatorio para no saturar los 3 RPCs
                         i = loops; 
-                        await new Promise(r => setTimeout(r, 2000)); 
+                        await new Promise(r => setTimeout(r, 2500)); 
 
                     } else {
-                        // MODO OFFLINE
+                        // MODO OFFLINE (Target Match)
                         if (address.toLowerCase() === currentTarget.toLowerCase()) {
                             isMatch = true;
-                            balanceText = "TARGET HIT";
+                            balanceInfo = "TARGET HIT";
                         }
                         logWallet(mnemonicPhrase, address, isMatch, false, is24Words);
                     }
@@ -448,8 +483,8 @@
                     if (isMatch) {
                         foundCount++;
                         foundDisplay.innerText = foundCount;
-                        saveToTreasureBox(mnemonicPhrase, address, wallet.privateKey, balanceText);
-                        alert("¡OBJETIVO LOCALIZADO! Revisa la caja inferior.");
+                        saveToTreasureBox(mnemonicPhrase, address, wallet.privateKey, balanceInfo);
+                        alert("¡ENCONTRADO! Saldo detectado en " + balanceInfo);
                         stopMining(); 
                         return;
                     }
@@ -465,21 +500,23 @@
             }
         }
 
-        // Función Log actualizada para mostrar tag de palabras
+        function formatBal(wei, symbol) {
+            const val = ethers.formatEther(wei);
+            // Cortar decimales largos
+            return parseFloat(val).toFixed(4) + " " + symbol;
+        }
+
         function logWallet(mnemonic, address, winner, isPending, is24Words) {
             const div = document.createElement('div');
             div.className = winner ? 'log-entry found-alert' : 'log-entry';
             
             const shortAddr = address.substring(0,6) + "..." + address.substring(38);
-            
-            // Mostrar solo inicio...fin de la frase para ahorrar espacio visual
             const words = mnemonic.split(" ");
             const shortMnemonic = `${words[0]} ${words[1]} ... ${words[words.length-1]}`;
             
-            let status = winner ? '!!! MATCH !!!' : '---';
+            let status = winner ? '!!! MATCH !!!' : '0.00';
             if (isPending) status = '<span class="checking">Scan...</span>';
 
-            // Etiqueta visual
             const tagClass = is24Words ? 'tag-24' : 'tag-12';
             const tagName = is24Words ? '24W' : '12W';
 
@@ -501,10 +538,14 @@
             const statusSpan = div.querySelector('.status');
             if (winner) {
                 div.className = 'log-entry found-alert';
-                // Al ganar, mostramos la mnemónica completa en el log visual si cabe, o al menos actualizamos
                 div.querySelector('.mnemonic').innerText = fullMnemonic; 
                 statusSpan.innerHTML = `<strong>${text}</strong>`;
-                statusSpan.style.color = 'white';
+                
+                // Color específico según la moneda encontrada
+                if(text.includes("ETH")) statusSpan.classList.add("chain-eth");
+                if(text.includes("BNB")) statusSpan.style.color = "var(--bsc-color)";
+                if(text.includes("MATIC")) statusSpan.style.color = "var(--matic-color)";
+
             } else {
                 statusSpan.innerText = text;
             }
@@ -513,12 +554,12 @@
         function saveToTreasureBox(mnemonic, address, privKey, balance) {
             const wordCount = mnemonic.split(" ").length;
             const entry = `
-[${new Date().toLocaleTimeString()}] !!! RESULTADO (${wordCount} PALABRAS) !!!
+[${new Date().toLocaleTimeString()}] !!! RESULTADO (${wordCount} WORDS) !!!
 --------------------------------------------------
+BALANCE:  ${balance}
 ADDRESS:  ${address}
 SEMILLA:  ${mnemonic}
 PRIVKEY:  ${privKey}
-INFO:     ${balance}
 --------------------------------------------------
 \n`;
             treasureBox.value += entry;
