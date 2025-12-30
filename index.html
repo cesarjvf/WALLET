@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Entropía BIP39 | Buscador Híbrido</title>
+    <script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d0d0d;
+            --terminal-green: #00ff41;
+            --terminal-dim: #008F11;
+            --alert-color: #ff3333;
+            --warning-color: #ffcc00;
+            --panel-bg: #1a1a1a;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--terminal-green);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--terminal-dim);
+            width: 100%;
+            max-width: 800px;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: var(--terminal-dim);
+        }
+
+        #main-panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--terminal-dim);
+            width: 100%;
+            max-width: 800px;
+            height: 300px;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.1);
+        }
+
+        .log-entry {
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .mnemonic {
+            color: #ccc;
+        }
+
+        .address {
+            color: var(--terminal-dim);
+        }
+
+        .checking {
+            color: var(--warning-color);
+            font-style: italic;
+        }
+
+        #stats-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            border: 1px solid var(--terminal-dim);
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        button {
+            background-color: transparent;
+            border: 1px solid var(--terminal-green);
+            color: var(--terminal-green);
+            padding: 10px 30px;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background-color: var(--terminal-green);
+            color: black;
+            box-shadow: 0 0 15px var(--terminal-green);
+        }
+
+        button:disabled {
+            border-color: #555;
+            color: #555;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #222;
+            padding: 10px 20px;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.5);
+            accent-color: var(--terminal-green);
+        }
+
+        .found-alert {
+            background-color: var(--alert-color);
+            color: white;
+            padding: 5px;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        /* Scrollbar custom */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--terminal-dim); }
+
+        .disclaimer {
+            margin-top: auto;
+            font-size: 0.7rem;
+            color: #555;
+            text-align: center;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Buscador de Entropía BIP39</h1>
+        <div class="subtitle">Generador de Claves Privadas & Verificador de Saldos</div>
+    </header>
+
+    <div id="stats-panel">
+        <div class="stat-box">
+            <div class="stat-value" id="count-gen">0</div>
+            <div class="stat-label">Billeteras Generadas</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="speed-gen">0</div>
+            <div class="stat-label">Velocidad (Wallets/seg)</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="found-count" style="color: var(--alert-color)">0</div>
+            <div class="stat-label">Con Saldo Encontradas</div>
+        </div>
+    </div>
+
+    <div id="main-panel">
+        <div style="color: gray; text-align: center; padding-top: 100px;">
+            Configura el modo y presiona INICIAR...
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="checkbox-wrapper">
+            <input type="checkbox" id="chk-online" onchange="toggleMode()">
+            <label for="chk-online">
+                <strong>Activar Escaneo Real (Lento)</strong>
+                <br><span style="font-size:0.7em; color:#888;">Verifica saldo en la red Ethereum. Requiere internet. ~3 seg/wallet.</span>
+            </label>
+        </div>
+
+        <div class="btn-group">
+            <button id="btn-start" onclick="startMining()">Iniciar Búsqueda</button>
+            <button id="btn-stop" onclick="stopMining()" disabled>Detener</button>
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        NOTA: En modo "Escaneo Real", la herramienta consulta un nodo público RPC de Ethereum. 
+        Si se encuentra saldo en ETH, la misma frase mnemónica (12 palabras) es válida para recuperar fondos en Bitcoin, 
+        Polygon, BSC, etc.
+        <br>Uso exclusivamente educativo.
+    </div>
+
+    <script type="module">
+        import { ethers } from "https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js";
+
+        // Usamos un proveedor público robusto (Ankr o LlamaNodes suelen ser estables)
+        // Nota: Si falla, prueba con 'https://cloudflare-eth.com'
+        const RPC_URL = "https://eth.llamarpc.com"; 
+        let provider = null;
+
+        let isRunning = false;
+        let generatedCount = 0;
+        let startTime = 0;
+        let foundCount = 0;
+        
+        // Elementos del DOM
+        const display = document.getElementById('main-panel');
+        const countDisplay = document.getElementById('count-gen');
+        const speedDisplay = document.getElementById('speed-gen');
+        const foundDisplay = document.getElementById('found-count');
+        const btnStart = document.getElementById('btn-start');
+        const btnStop = document.getElementById('btn-stop');
+        const chkOnline = document.getElementById('chk-online');
+
+        // Modo Offline targets (Solo para demo rápido)
+        const offlineTargets = new Set([
+            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", 
+            "1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF", 
+            "0x00000000219ab540356cBB839Cbe05303d7705Fa" // ETH Genesis deposit
+        ]);
+
+        window.toggleMode = function() {
+            // Reiniciar provider si se activa
+            if (chkOnline.checked && !provider) {
+                try {
+                    provider = new ethers.JsonRpcProvider(RPC_URL);
+                    console.log("Conectado a proveedor RPC");
+                } catch(e) {
+                    alert("Error conectando a la red. Revisa tu internet.");
+                    chkOnline.checked = false;
+                }
+            }
+        }
+
+        window.startMining = function() {
+            if (isRunning) return;
+            
+            // Inicializar provider si no existe y estamos en online
+            if (chkOnline.checked && !provider) {
+                provider = new ethers.JsonRpcProvider(RPC_URL);
+            }
+
+            isRunning = true;
+            btnStart.disabled = true;
+            btnStop.disabled = false;
+            chkOnline.disabled = true; // No cambiar modo mientras corre
+            
+            display.innerHTML = ''; 
+            startTime = Date.now();
+            generatedCount = 0;
+
+            miningLoop();
+        };
+
+        window.stopMining = function() {
+            isRunning = false;
+            btnStart.disabled = false;
+            btnStop.disabled = true;
+            chkOnline.disabled = false;
+            speedDisplay.innerText = "0";
+        };
+
+        async function miningLoop() {
+            if (!isRunning) return;
+
+            try {
+                // 1. Generar Billetera
+                const wallet = ethers.Wallet.createRandom();
+                const mnemonic = wallet.mnemonic.phrase;
+                const address = wallet.address;
+
+                let hasBalance = false;
+                let balanceText = "0.00";
+
+                // 2. Lógica según modo
+                if (chkOnline.checked) {
+                    // MODO ONLINE: Consultar saldo real
+                    // Mostramos "Consultando..." antes de la espera
+                    const tempDiv = logWallet(mnemonic, address, false, true);
+                    
+                    try {
+                        const balance = await provider.getBalance(address);
+                        
+                        // Si hay saldo (balance > 0 BigInt)
+                        if (balance > 0n) {
+                            hasBalance = true;
+                            balanceText = ethers.formatEther(balance) + " ETH";
+                        }
+                        
+                        // Actualizar la fila existente
+                        updateLogEntry(tempDiv, hasBalance, balanceText);
+
+                    } catch (netError) {
+                        console.error("Error red:", netError);
+                        updateLogEntry(tempDiv, false, "Error Red");
+                        // Pausa extra si hay error para no saturar
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+
+                    // Delay obligatorio para evitar ban de IP (2000ms - 3000ms)
+                    await new Promise(r => setTimeout(r, 2500));
+
+                } else {
+                    // MODO OFFLINE: Rápido contra lista interna
+                    hasBalance = offlineTargets.has(address); 
+                    logWallet(mnemonic, address, hasBalance, false);
+                }
+
+                generatedCount++;
+                if (hasBalance) {
+                    foundCount++;
+                    foundDisplay.innerText = foundCount;
+                    alert("¡ENCONTRADO! Frase con saldo: " + mnemonic);
+                    // Opcional: stopMining();
+                }
+
+            } catch (err) {
+                console.error("Error general:", err);
+            }
+
+            updateStats();
+
+            if (isRunning) {
+                // Si es online, el delay ya se hizo arriba con await. 
+                // Si es offline, usamos setTimeout 0 para máxima velocidad.
+                const nextTick = chkOnline.checked ? 100 : 0;
+                setTimeout(miningLoop, nextTick);
+            }
+        }
+
+        // Crear entrada visual
+        function logWallet(mnemonic, address, winner, isPending) {
+            const div = document.createElement('div');
+            div.className = winner ? 'log-entry found-alert' : 'log-entry';
+            
+            const shortAddress = address.substring(0, 8) + "..." + address.substring(38);
+            const words = mnemonic.split(" ");
+            const shortMnemonic = `${words[0]} ${words[1]} ... ${words[11]}`;
+
+            let statusHtml = winner ? '$$$ DETECTADO' : '0.00';
+            if (isPending) statusHtml = '<span class="checking">Scan...</span>';
+
+            div.innerHTML = `
+                <span class="mnemonic">${shortMnemonic}</span>
+                <span class="address">${shortAddress}</span>
+                <span class="status">${statusHtml}</span>
+            `;
+
+            display.prepend(div);
+
+            if (display.children.length > 50) {
+                display.removeChild(display.lastChild);
+            }
+            return div;
+        }
+
+        // Actualizar entrada (para modo async)
+        function updateLogEntry(div, winner, text) {
+            if (winner) {
+                div.className = 'log-entry found-alert';
+            }
+            const statusSpan = div.querySelector('.status');
+            if (statusSpan) {
+                statusSpan.innerHTML = winner ? `<strong>${text}</strong>` : text;
+                statusSpan.style.color = winner ? 'white' : '#555';
+            }
+        }
+
+        function updateStats() {
+            countDisplay.innerText = generatedCount.toLocaleString();
+            
+            const elapsedSeconds = (Date.now() - startTime) / 1000;
+            if (elapsedSeconds > 0) {
+                // En modo lento la velocidad será < 1, mostramos decimales
+                const speed = generatedCount / elapsedSeconds;
+                speedDisplay.innerText = speed < 1 ? speed.toFixed(2) : Math.floor(speed).toLocaleString();
+            }
+        }
+    </script>
+</body>
+</html>
